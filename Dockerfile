@@ -1,5 +1,5 @@
 # Stage 1: Build the Go bridge
-FROM golang:1.23-bullseye AS bridge-builder
+FROM golang:1.24-bullseye AS bridge-builder
 
 # 安装构建 CGO 项目必备的工具
 RUN apt-get update && apt-get install -y build-essential gcc libc6-dev
