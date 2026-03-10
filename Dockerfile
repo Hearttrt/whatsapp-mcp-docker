@@ -1,15 +1,22 @@
 # Stage 1: Build the Go bridge
 FROM golang:1.23-bullseye AS bridge-builder
 
-# Enable CGO for sqlite3 support (required by whatsmeow)
+# Enable CGO for sqlite3 support
 ENV CGO_ENABLED=1
 
 WORKDIR /app/whatsapp-bridge
-# Copy go.mod and go.sum if they exist (handling cases where they might be missing in some forks)
-COPY whatsapp-bridge/go.mod* whatsapp-bridge/go.sum* ./
-RUN if [ -f go.mod ]; then go mod download; fi
 
-COPY whatsapp-bridge/ ./
+# 复制整个 bridge 目录（这样能确保拿到所有文件）
+COPY whatsapp-bridge/ .
+
+# 如果没有 go.mod，则初始化一个；如果有，则下载依赖
+RUN if [ ! -f go.mod ]; then \
+    go mod init whatsapp-bridge && go mod tidy; \
+    else \
+    go mod download || go mod tidy; \
+    fi
+
+# 编译
 RUN go build -o /app/whatsapp-bridge-bin main.go
 
 # Stage 2: Final image
