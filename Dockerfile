@@ -1,23 +1,25 @@
 # Stage 1: Build the Go bridge
 FROM golang:1.23-bullseye AS bridge-builder
 
-# Enable CGO for sqlite3 support
+# 安装构建 CGO 项目必备的工具
+RUN apt-get update && apt-get install -y build-essential gcc libc6-dev
+
+# 开启 CGO
 ENV CGO_ENABLED=1
+# 设置代理以防网络问题（Actions 默认环境通常不需要，但添加更稳妥）
+ENV GOPROXY=https://proxy.golang.org,direct
 
 WORKDIR /app/whatsapp-bridge
 
-# 复制整个 bridge 目录（这样能确保拿到所有文件）
+# 1. 复制所有文件
 COPY whatsapp-bridge/ .
 
-# 如果没有 go.mod，则初始化一个；如果有，则下载依赖
-RUN if [ ! -f go.mod ]; then \
-    go mod init whatsapp-bridge && go mod tidy; \
-    else \
-    go mod download || go mod tidy; \
-    fi
-
-# 编译
-RUN go build -o /app/whatsapp-bridge-bin main.go
+# 2. 这里的逻辑做了调整：
+# - 如果没有 go.mod，则初始化
+# - 直接运行 go build，-v 参数会打印详细的构建过程，方便报错时排查
+RUN [ -f go.mod ] || go mod init whatsapp-bridge && \
+    go mod tidy && \
+    go build -v -o /app/whatsapp-bridge-bin main.go
 
 # Stage 2: Final image
 FROM python:3.11-slim-bullseye
